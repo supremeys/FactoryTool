@@ -28,13 +28,23 @@ class SerialDetection(threading.Thread):
     def enter_event(self):
         self._exit = False
 
-    def get_com_number(self, vid_pid, location):
+    def get_com_number(self):
         port_list = []
+        repl_port = [("0x2C7C:0x0901", "x.8"),      # Unisoc
+                     ("0x2C7C:0x6001", "x.5"),      # N 系列
+                     ("0x2C7C:0x6002", "x.5"),      # M 系列
+                     ("0x2C7C:0x6005", "x.5"),      # A 系列
+                     ("0x2C7C:0x0700", "x.1"),      # BG95
+                     ("0x2C7C:0x0903", "x.5"),      # Eigen
+                     ("0x2C7C:0x6002", "x.20")]     # M 系列 新驱动
         for p in list(self.serPort.comports()):
-            print("p.location: ", p.location)
-            if p.vid == int(vid_pid.split(":")[0], 16) and p.pid == int(vid_pid.split(":")[1], 16) and p.location is not None:
-                if location in p.location:
+            print(p.description)
+            for vid_pid, location in repl_port:
+                location_ = p.location if p.location is not None else ""
+                if (p.vid == int(vid_pid.split(":")[0], 16) and p.pid == int(vid_pid.split(":")[1], 16) and location in location_) or "Quectel USB REPL Port" in p.description:
                     port_list.append(p.device)
+                    break
+
         return port_list
 
     def run(self):
@@ -45,13 +55,7 @@ class SerialDetection(threading.Thread):
             else:
                 if serial_list == [] or serial_list != self.serPort.comports():
                     serial_list = self.serPort.comports()
-                    serial_port = self.get_com_number("0x2C7C:0x0901", "x.8") # Unisoc
-                    serial_port.extend(self.get_com_number("0x2C7C:0x6001", "x.5")) # N 系列
-                    serial_port.extend(self.get_com_number("0x2C7C:0x6002", "x.5")) # M 系列
-                    serial_port.extend(self.get_com_number("0x2C7C:0x6005", "x.5")) # A 系列
-                    serial_port.extend(self.get_com_number("0x2C7C:0x0700", "x.1")) # BG95
-                    serial_port.extend(self.get_com_number("0x2C7C:0x0903", "x.5")) # Eigen
-                    # print("设备列表为{}".format(serial_port))
+                    serial_port = self.get_com_number()
                     pub.sendMessage('serialUpdate', arg1=serial_port)
             time.sleep(1)
 
